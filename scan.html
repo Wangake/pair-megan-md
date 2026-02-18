@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEGAN-MD • QR Scan</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0B0C10 0%, #1A1F2E 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            padding: 40px 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.8em;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+
+        .header h2 {
+            font-size: 1.2em;
+            color: #a0a0a0;
+            font-weight: 400;
+        }
+
+        .qr-container {
+            text-align: center;
+            padding: 20px;
+            background: white;
+            border-radius: 20px;
+            margin: 20px 0;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .qr-image {
+            max-width: 100%;
+            max-height: 300px;
+            display: none;
+        }
+
+        .qr-placeholder {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .instructions {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .instructions h3 {
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        .instructions ol {
+            padding-left: 20px;
+            color: #ccc;
+        }
+
+        .instructions li {
+            margin: 10px 0;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .status.success {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4CAF50;
+            color: #4CAF50;
+            display: block;
+        }
+
+        .status.error {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+            color: #f44336;
+            display: block;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .nav-btn {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: white;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .channel-btn {
+            display: inline-block;
+            background: #1E3A8A;
+            padding: 12px 30px;
+            border-radius: 30px;
+            color: white;
+            text-decoration: none;
+            margin: 15px 0;
+            transition: all 0.3s;
+            border: 1px solid #3B82F6;
+        }
+
+        .channel-btn:hover {
+            background: #2563EB;
+            transform: translateY(-2px);
+        }
+
+        .credit {
+            color: #667eea;
+            font-weight: 600;
+            margin-top: 10px;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MEGAN MD</h1>
+            <h2>QR Code Scanner</h2>
+        </div>
+
+        <div class="qr-container" id="qrContainer">
+            <div id="qrPlaceholder" class="qr-placeholder">Click generate to get QR code</div>
+            <img id="qrImage" class="qr-image" src="" alt="QR Code">
+        </div>
+
+        <button class="btn" id="generateBtn">
+            <span id="btnText">Generate QR Code</span>
+            <span id="loadingSpinner" class="loading hidden"></span>
+        </button>
+
+        <div class="instructions">
+            <h3>📋 How to Scan:</h3>
+            <ol>
+                <li>Open WhatsApp on your phone</li>
+                <li>Go to <strong>Linked Devices</strong></li>
+                <li>Tap <strong>Link a Device</strong></li>
+                <li>Scan the QR code above</li>
+            </ol>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <div class="nav-buttons">
+            <a href="/pair-page" class="nav-btn">🔑 Pairing Code</a>
+            <a href="/" class="nav-btn">🏠 Home</a>
+        </div>
+
+        <div class="footer">
+            <a href="https://whatsapp.com/channel/0029VbCWWXi9hXF2SXUHgZ1b" target="_blank" class="channel-btn">
+                📢 Join Our WhatsApp Channel
+            </a>
+            <div class="credit">created by tracker wanga</div>
+        </div>
+    </div>
+
+    <script>
+        const generateBtn = document.getElementById('generateBtn');
+        const btnText = document.getElementById('btnText');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const qrPlaceholder = document.getElementById('qrPlaceholder');
+        const qrImage = document.getElementById('qrImage');
+        const statusDiv = document.getElementById('status');
+
+        generateBtn.addEventListener('click', generateQR);
+
+        async function generateQR() {
+            // Show loading
+            btnText.classList.add('hidden');
+            loadingSpinner.classList.remove('hidden');
+            generateBtn.disabled = true;
+            qrPlaceholder.style.display = 'block';
+            qrImage.style.display = 'none';
+
+            try {
+                const response = await fetch('/scan/generate');
+                const data = await response.json();
+
+                if (data.success && data.qr) {
+                    qrImage.src = data.qr;
+                    qrImage.style.display = 'block';
+                    qrPlaceholder.style.display = 'none';
+                    showStatus('QR Code generated! Scan with WhatsApp', 'success');
+                } else {
+                    showStatus(data.error || 'Failed to generate QR', 'error');
+                }
+            } catch (error) {
+                showStatus('Network error. Please try again.', 'error');
+            } finally {
+                btnText.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                generateBtn.disabled = false;
+            }
+        }
+
+        function showStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + type;
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
