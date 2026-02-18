@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEGAN-MD • Pairing Code</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0B0C10 0%, #1A1F2E 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            padding: 40px 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.8em;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+
+        .header h2 {
+            font-size: 1.2em;
+            color: #a0a0a0;
+            font-weight: 400;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ccc;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            color: white;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(255,255,255,0.15);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .code-container {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(255,255,255,0.1);
+            display: none;
+        }
+
+        .code {
+            font-family: 'Courier New', monospace;
+            font-size: 2.5em;
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 20px 0;
+            padding: 10px;
+        }
+
+        .copy-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .instructions {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .instructions h3 {
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        .instructions ol {
+            padding-left: 20px;
+            color: #ccc;
+        }
+
+        .instructions li {
+            margin: 10px 0;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .status.success {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4CAF50;
+            color: #4CAF50;
+            display: block;
+        }
+
+        .status.error {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+            color: #f44336;
+            display: block;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .nav-btn {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: white;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .channel-btn {
+            display: inline-block;
+            background: #1E3A8A;
+            padding: 12px 30px;
+            border-radius: 30px;
+            color: white;
+            text-decoration: none;
+            margin: 15px 0;
+            transition: all 0.3s;
+            border: 1px solid #3B82F6;
+        }
+
+        .channel-btn:hover {
+            background: #2563EB;
+            transform: translateY(-2px);
+        }
+
+        .credit {
+            color: #667eea;
+            font-weight: 600;
+            margin-top: 10px;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MEGAN MD</h1>
+            <h2>Pairing Code Generator</h2>
+        </div>
+
+        <div class="input-group">
+            <label>📱 Phone Number (with country code)</label>
+            <input type="text" id="phoneNumber" placeholder="e.g., 254700000000" value="">
+        </div>
+
+        <button class="btn" id="generateBtn">
+            <span id="btnText">Generate Pairing Code</span>
+            <span id="loadingSpinner" class="loading hidden"></span>
+        </button>
+
+        <div id="codeContainer" class="code-container">
+            <div class="code" id="pairCode">ABCD-1234</div>
+            <button class="copy-btn" id="copyBtn">📋 Copy Code</button>
+        </div>
+
+        <div id="instructions" class="instructions" style="display: none;">
+            <h3>📋 How to Use:</h3>
+            <ol>
+                <li>Open WhatsApp on your phone</li>
+                <li>Go to <strong>Linked Devices</strong></li>
+                <li>Tap <strong>Link a Device</strong></li>
+                <li>Select <strong>Link with phone number</strong></li>
+                <li>Enter this code: <strong id="codeDisplay">ABCD-1234</strong></li>
+            </ol>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <div class="nav-buttons">
+            <a href="/scan-page" class="nav-btn">📸 QR Scan</a>
+            <a href="/" class="nav-btn">🏠 Home</a>
+        </div>
+
+        <div class="footer">
+            <a href="https://whatsapp.com/channel/0029VbCWWXi9hXF2SXUHgZ1b" target="_blank" class="channel-btn">
+                📢 Join Our WhatsApp Channel
+            </a>
+            <div class="credit">created by tracker wanga</div>
+        </div>
+    </div>
+
+    <script>
+        const phoneInput = document.getElementById('phoneNumber');
+        const generateBtn = document.getElementById('generateBtn');
+        const btnText = document.getElementById('btnText');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const codeContainer = document.getElementById('codeContainer');
+        const pairCode = document.getElementById('pairCode');
+        const codeDisplay = document.getElementById('codeDisplay');
+        const instructions = document.getElementById('instructions');
+        const copyBtn = document.getElementById('copyBtn');
+        const statusDiv = document.getElementById('status');
+
+        let currentCode = '';
+
+        generateBtn.addEventListener('click', generateCode);
+        phoneInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') generateCode();
+        });
+
+        async function generateCode() {
+            const phone = phoneInput.value.trim();
+            
+            if (!phone) {
+                showStatus('Please enter a phone number', 'error');
+                return;
+            }
+
+            // Clean phone number
+            const cleanPhone = phone.replace(/\D/g, '');
+            if (cleanPhone.length < 10) {
+                showStatus('Invalid phone number. Use country code e.g., 254700000000', 'error');
+                return;
+            }
+
+            // Show loading
+            btnText.classList.add('hidden');
+            loadingSpinner.classList.remove('hidden');
+            generateBtn.disabled = true;
+            codeContainer.style.display = 'none';
+            instructions.style.display = 'none';
+
+            try {
+                const response = await fetch(`/pair/generate?number=${encodeURIComponent(cleanPhone)}`);
+                const data = await response.json();
+
+                if (data.success && data.code) {
+                    currentCode = data.code;
+                    pairCode.textContent = data.code;
+                    codeDisplay.textContent = data.code;
+                    codeContainer.style.display = 'block';
+                    instructions.style.display = 'block';
+                    showStatus('Code generated successfully!', 'success');
+                } else {
+                    showStatus(data.error || 'Failed to generate code', 'error');
+                }
+            } catch (error) {
+                showStatus('Network error. Please try again.', 'error');
+            } finally {
+                btnText.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                generateBtn.disabled = false;
+            }
+        }
+
+        copyBtn.addEventListener('click', () => {
+            if (!currentCode) return;
+            
+            navigator.clipboard.writeText(currentCode).then(() => {
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                }, 2000);
+            });
+        });
+
+        function showStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + type;
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
