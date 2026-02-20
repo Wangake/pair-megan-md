@@ -1,13 +1,13 @@
 {
     "name": "megan-md-sessions",
     "description": "MEGAN-MD Multi-Device WhatsApp Session Generator",
-    "main": "./bmb.js",
+    "main": "./index.js",
     "engines": {
         "npm": ">=9.7.2",
         "node": ">=20.0.0"
     },
     "scripts": {
-        "start": "node bmb.js"
+        "start": "node index.js"
     },
     "author": "Wanga",
     "license": "GPL-3.0 license",
