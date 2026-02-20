@@ -1,154 +1,105 @@
+const PastebinAPI = require('pastebin-js'),
+pastebin = new PastebinAPI('EMWTMkQAVfJa9kM-MRUrxd5Oku1U7pgL')
+const {makeid} = require('./id');
 const express = require('express');
-const path = require('path');
-const fs = require('fs-extra');
-const pino = require('pino');
+const fs = require('fs');
+let router = express.Router()
+const pino = require("pino");
 const {
-    default: makeWASocket,
+    default: France_King,
     useMultiFileAuthState,
     delay,
     makeCacheableSignalKeyStore,
     Browsers
-} = require('@whiskeysockets/baileys');
+} = require("@whiskeysockets/baileys");
 
-const { generateId, formatPhoneNumber, isValidPhone, getTimestamp, cleanupTemp } = require('./app');
+function removeFile(FilePath){
+    if(!fs.existsSync(FilePath)) return false;
+    fs.rmSync(FilePath, { recursive: true, force: true })
+};
 
-const router = express.Router();
+router.get('/', async (req, res) => {
+    const id = makeid();
+    let num = req.query.number;
+        async function MEGAN_MD_PAIR_CODE() {
+        const {
+            state,
+            saveCreds
+        } = await useMultiFileAuthState('./temp/'+id)
+     try {
+            let Pair_Code_By_MEGAN = France_King({
+                auth: {
+                    creds: state.creds,
+                    keys: makeCacheableSignalKeyStore(state.keys, pino({level: "fatal"}).child({level: "fatal"})),
+                },
+                printQRInTerminal: false,
+                logger: pino({ level: "fatal" }).child({ level: "fatal" }),
+                browser: Browsers.macOS('Chrome')
+             });
+             if(!Pair_Code_By_MEGAN.authState.creds.registered) {
+                await delay(1500);
+                        num = num.replace(/[^0-9]/g,'');
+                            const code = await Pair_Code_By_MEGAN.requestPairingCode(num)
+                 if(!res.headersSent){
+                 await res.send({code});
+                     }
+                 }
+            Pair_Code_By_MEGAN.ev.on('creds.update', saveCreds)
+            Pair_Code_By_MEGAN.ev.on("connection.update", async (s) => {
+                const {
+                    connection,
+                    lastDisconnect
+                } = s;
+                if (connection == "open") {
+                await delay(50000);
+                let data = fs.readFileSync(__dirname + `/temp/${id}/creds.json`);
+                await delay(8000);
+               let b64data = Buffer.from(data).toString('base64');
+               let session = await Pair_Code_By_MEGAN.sendMessage(Pair_Code_By_MEGAN.user.id, { text: 'MEGAN-MD='+ b64data });
 
-// Serve pairing page
-router.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'pair.html'));
-});
+               let MEGAN_MD_TEXT = `
+╔══════════════════════════════╗
+║     𝐌𝐄𝐆𝐀𝐍-𝐌𝐃 SESSION       ║
+║   Multi-Device Engineered    ║
+╠══════════════════════════════╣
+║  ✅ SESSION CONNECTED!       ║
+║  📱 Session ID Generated     ║
+║  🔑 MEGAN-MD=your_session    ║
+╠══════════════════════════════╣
+║  📢 CHANNEL:                 ║
+║  https://whatsapp.com/channel/║
+║  0029VbB6d0KKAwEdvcgqrH26    ║
+╠══════════════════════════════╣
+║  👑 OWNER: 254111385747      ║
+║  💻 GITHUB:                  ║
+║  github.com/mrpopkid/        ║
+╠══════════════════════════════╣
+║  🔧 Engineered by WANGA      ║
+║  🛠️  Multi-Device Expert      ║
+╚══════════════════════════════╝
 
-// Generate pairing code API
-router.get('/generate', async (req, res) => {
-    const phoneNumber = req.query.number;
-    
-    if (!phoneNumber) {
-        return res.status(400).json({
-            success: false,
-            error: 'Phone number is required'
-        });
-    }
-    
-    if (!isValidPhone(phoneNumber)) {
-        return res.status(400).json({
-            success: false,
-            error: 'Invalid phone number. Use country code e.g., 254700000000'
-        });
-    }
-    
-    const sessionId = generateId(8);
-    const sessionDir = path.join(__dirname, 'temp', sessionId);
-    await fs.ensureDir(sessionDir);
-    
-    const formattedNumber = formatPhoneNumber(phoneNumber);
-    
-    try {
-        const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
-        
-        const sock = makeWASocket({
-            auth: {
-                creds: state.creds,
-                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' }))
-            },
-            printQRInTerminal: false,
-            logger: pino({ level: 'silent' }),
-            browser: Browsers.macOS('Chrome')
-        });
-        
-        // Handle credentials update
-        sock.ev.on('creds.update', saveCreds);
-        
-        // Request pairing code if not registered
-        if (!sock.authState.creds.registered) {
-            await delay(1000);
-            
-            try {
-                const pairingCode = await sock.requestPairingCode(formattedNumber);
-                
-                // Send response with pairing code
-                res.json({
-                    success: true,
-                    code: pairingCode,
-                    number: formattedNumber,
-                    message: 'Enter this code in WhatsApp'
-                });
-                
-                // Wait for connection
-                sock.ev.on('connection.update', async (s) => {
-                    const { connection } = s;
-                    
-                    if (connection === 'open') {
-                        console.log(`✅ Paired successfully: ${formattedNumber}`);
-                        
-                        const { time, date } = getTimestamp();
-                        
-                        // Get user info
-                        const userName = sock.user?.name || 'User';
-                        const userPhone = sock.user?.id?.split(':')[0] || formattedNumber;
-                        
-                        // Send fancy success message
-                        await sock.sendMessage(sock.user.id, {
-                            text: `┏━━━━━━━━━━━━━━━━━━━┓\n┃ *𝐌𝐄𝐆𝐀𝐍-𝐌𝐃*\n┗━━━━━━━━━━━━━━━━━━━┛\n\n✅ *CONNECTED SUCCESSFULLY!*\n\n👤 *Name:* ${userName}\n📱 *Phone:* ${userPhone}\n⏰ *Time:* ${time}\n📅 *Date:* ${date}\n\n> created by tracker wanga`
-                        });
-                        
-                        // Read session file
-                        await delay(2000);
-                        const credsPath = path.join(sessionDir, 'creds.json');
-                        
-                        if (fs.existsSync(credsPath)) {
-                            const credsData = await fs.readFile(credsPath, 'utf8');
-                            const base64Creds = Buffer.from(credsData).toString('base64');
-                            
-                            // Send session data with prefix
-                            await sock.sendMessage(sock.user.id, {
-                                text: `MEGAN-MD=${base64Creds}`
-                            });
-                            
-                            console.log(`✅ Session sent to ${userPhone}`);
-                        }
-                        
-                        await delay(3000);
-                        await sock.ws.close();
-                        await cleanupTemp(sessionDir);
-                    }
-                });
-                
-            } catch (pairError) {
-                console.error('Pairing error:', pairError);
-                await cleanupTemp(sessionDir);
-                
-                if (!res.headersSent) {
-                    res.status(500).json({
-                        success: false,
-                        error: 'Failed to generate pairing code. Please try again.'
-                    });
+📌 Copy your session and use in MEGAN-MD bot
+⭐ Star the repo if you found this helpful!
+`
+ await Pair_Code_By_MEGAN.sendMessage(Pair_Code_By_MEGAN.user.id,{text:MEGAN_MD_TEXT},{quoted:session})
+ 
+
+        await delay(100);
+        await Pair_Code_By_MEGAN.ws.close();
+        return await removeFile('./temp/'+id);
+            } else if (connection === "close" && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode != 401) {
+                    await delay(10000);
+                    MEGAN_MD_PAIR_CODE();
                 }
-            }
-        }
-        
-    } catch (error) {
-        console.error('Server error:', error);
-        await cleanupTemp(sessionDir);
-        
-        if (!res.headersSent) {
-            res.status(500).json({
-                success: false,
-                error: 'Server error. Please try again.'
             });
+        } catch (err) {
+            console.log("service restated");
+            await removeFile('./temp/'+id);
+         if(!res.headersSent){
+            await res.send({code:"Service is Currently Unavailable"});
+         }
         }
     }
+    return await MEGAN_MD_PAIR_CODE()
 });
-
-// API route for AJAX calls
-router.get('/api', (req, res) => {
-    res.json({
-        name: 'MEGAN-MD Pairing API',
-        version: '1.0.0',
-        endpoints: {
-            generate: '/pair/generate?number=254700000000'
-        }
-    });
-});
-
-module.exports = router;
+module.exports = router
