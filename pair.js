@@ -1,6 +1,7 @@
 const {makeid} = require('./id');
 const express = require('express');
 const fs = require('fs');
+const path = require('path');
 let router = express.Router()
 const pino = require("pino");
 const {
@@ -9,206 +10,331 @@ const {
     delay,
     makeCacheableSignalKeyStore,
     Browsers,
-    DisconnectReason
+    DisconnectReason,
+    fetchLatestBaileysVersion
 } = require("@whiskeysockets/baileys");
 const { Boom } = require("@hapi/boom");
+
+// Silent logger (exactly like your example)
+const silentLogger = {
+    trace: () => {}, debug: () => {}, info: () => {},
+    warn: () => {}, error: () => {}, fatal: () => {},
+    child: () => silentLogger
+};
 
 function removeFile(FilePath){
     if(!fs.existsSync(FilePath)) return false;
     fs.rmSync(FilePath, { recursive: true, force: true })
 };
 
+// Store active pairings
+const activePairings = new Map();
+const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
+// Cleanup old sessions
+setInterval(() => {
+    const now = Date.now();
+    for (const [sessionId, data] of activePairings.entries()) {
+        if (now - data.createdAt > SESSION_TIMEOUT) {
+            if (data.sock && data.sock.ws) {
+                try { data.sock.ws.close(); } catch (e) {}
+            }
+            activePairings.delete(sessionId);
+            removeFile('./temp/'+sessionId);
+        }
+    }
+}, 30000);
+
 router.get('/', async (req, res) => {
-    const id = makeid();
+    const sessionId = makeid(8); // Make slightly longer ID
     let num = req.query.number;
     
     if (!num) {
-        return res.send({ error: "Phone number is required" });
+        return res.json({ error: "Phone number is required" });
     }
     
-    async function MEGAN_MD_PAIR_CODE() {
-        const {
-            state,
-            saveCreds
-        } = await useMultiFileAuthState('./temp/'+id)
+    try {
+        // Format phone number (EXACTLY like your example)
+        num = num.replace(/[^0-9]/g,'');
+        if (num.startsWith('0')) {
+            num = '254' + num.slice(1);
+        }
+        if (!num.startsWith('254')) {
+            num = '254' + num;
+        }
         
-        try {
-            // Format phone number
-            num = num.replace(/[^0-9]/g,'');
-            if (num.startsWith('0')) {
-                num = '254' + num.slice(1);
-            }
-            if (!num.startsWith('254')) {
-                num = '254' + num;
-            }
-            
-            // Create socket
-            let sock = makeWASocket({
-                auth: {
-                    creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, pino({level: "silent"}).child({level: "silent"})),
-                },
-                printQRInTerminal: false,
-                logger: pino({ level: "silent" }).child({ level: "silent" }),
-                browser: Browsers.macOS('Chrome'),
-                syncFullHistory: false,
-                markOnlineOnConnect: false
+        // Validate format (2547XXXXXXXX - 12 digits)
+        if (!num.match(/^254[0-9]{9}$/)) {
+            return res.json({ 
+                error: "Invalid phone number format. Use: 2547XXXXXXXX (12 digits)" 
             });
+        }
+
+        console.log(`[${sessionId}] Starting pairing for: ${num}`);
+
+        // Setup auth state
+        const { state, saveCreds } = await useMultiFileAuthState('./temp/'+sessionId);
+
+        // Get latest version like your example
+        const { version } = await fetchLatestBaileysVersion();
+
+        // Create socket with EXACT browser settings from your example
+        const sock = makeWASocket({
+            version,
+            auth: {
+                creds: state.creds,
+                keys: makeCacheableSignalKeyStore(state.keys, pino({level: "silent"}).child({level: "silent"})),
+            },
+            logger: silentLogger,
+            printQRInTerminal: false,
+            browser: ["Ubuntu", "Chrome", "20.0.04"], // EXACT from your working example
+            connectTimeoutMs: 60000,
+            defaultQueryTimeoutMs: 60000,
+            keepAliveIntervalMs: 10000,
+            markOnlineOnConnect: true,
+            syncFullHistory: false,
+            generateHighQualityLinkPreview: false
+        });
+
+        // Wait for connection and get pairing code (EXACT approach from your example)
+        const pairingCode = await new Promise((resolve, reject) => {
+            let resolved = false;
             
-            // Handle connection updates
-            sock.ev.on('connection.update', async (update) => {
-                const { connection, lastDisconnect, qr } = update;
+            const connectionHandler = async (update) => {
+                const { connection, lastDisconnect } = update;
                 
-                if (qr) {
-                    console.log('QR received (ignoring, using pairing code)');
-                }
+                console.log(`[${sessionId}] Connection: ${connection}`);
                 
                 if (connection === 'open') {
-                    console.log('Connection opened for ID:', id);
+                    console.log(`[${sessionId}] Connected, requesting code for ${num}`);
                     
-                    // Wait for credentials to be fully saved
-                    await delay(3000);
-                    
-                    try {
-                        // Read credentials
-                        let data = fs.readFileSync(__dirname + `/temp/${id}/creds.json`);
-                        let b64data = Buffer.from(data).toString('base64');
-                        
-                        // Send session to user
-                        let sessionMsg = await sock.sendMessage(sock.user.id, { 
-                            text: 'MEGAN-MD=' + b64data 
-                        });
-                        
-                        // Send success message
-                        let MEGAN_MD_TEXT = `
-╔══════════════════════════════╗
-║     𝐌𝐄𝐆𝐀𝐍-𝐌𝐃 SESSION       ║
-║   Multi-Device Engineered    ║
-╠══════════════════════════════╣
-║  ✅ SESSION CONNECTED!       ║
-║  📱 Session ID Generated     ║
-║  🔑 MEGAN-MD=your_session    ║
-╠══════════════════════════════╣
-║  📢 CHANNEL:                 ║
-║  https://whatsapp.com/channel/║
-║  0029VbB6d0KKAwEdvcgqrH26    ║
-╠══════════════════════════════╣
-║  👑 OWNER: 254111385747      ║
-║  💻 GITHUB:                  ║
-║  github.com/mrpopkid/        ║
-╠══════════════════════════════╣
-║  🔧 Engineered by WANGA      ║
-║  🛠️  Multi-Device Expert      ║
-╚══════════════════════════════╝
-
-📌 Copy your session and use in MEGAN-MD bot
-⭐ Star the repo if you found this helpful!
-`;
-                        
-                        await sock.sendMessage(sock.user.id, { 
-                            text: MEGAN_MD_TEXT 
-                        }, { quoted: sessionMsg });
-                        
-                        console.log('Session sent successfully for ID:', id);
-                        
-                        // Close connection after sending
-                        await delay(2000);
-                        await sock.ws.close();
-                        
-                        // Clean up temp folder after delay
-                        setTimeout(() => {
-                            removeFile('./temp/'+id);
-                        }, 5000);
-                        
-                    } catch (err) {
-                        console.error('Error sending session:', err);
-                    }
-                }
-                
-                else if (connection === 'close') {
-                    const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
-                    
-                    if (reason === DisconnectReason.loggedOut) {
-                        console.log('Logged out for ID:', id);
-                        removeFile('./temp/'+id);
-                    } else if (reason === DisconnectReason.connectionClosed) {
-                        console.log('Connection closed for ID:', id);
-                    } else if (reason === DisconnectReason.timedOut) {
-                        console.log('Connection timeout for ID:', id);
-                        // Try to reconnect
-                        setTimeout(() => {
-                            if (!res.headersSent) {
-                                res.send({ error: "Connection timeout, please try again" });
+                    // Wait a bit before requesting code (like your example)
+                    setTimeout(async () => {
+                        try {
+                            // IMPORTANT: This requests WhatsApp to PROVIDE the code
+                            const code = await sock.requestPairingCode(num);
+                            
+                            if (!resolved) {
+                                resolved = true;
+                                sock.ev.off('connection.update', connectionHandler);
+                                console.log(`[${sessionId}] Code received: ${code}`);
+                                resolve(code);
                             }
-                            removeFile('./temp/'+id);
-                        }, 5000);
+                        } catch (err) {
+                            console.error(`[${sessionId}] Code request error:`, err);
+                            if (!resolved) {
+                                resolved = true;
+                                sock.ev.off('connection.update', connectionHandler);
+                                reject(err);
+                            }
+                        }
+                    }, 2000); // 2 second delay like your example
+                } 
+                else if (connection === 'close') {
+                    if (!resolved) {
+                        const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
+                        console.log(`[${sessionId}] Closed:`, reason);
+                        resolved = true;
+                        sock.ev.off('connection.update', connectionHandler);
+                        reject(new Error('Connection closed'));
                     }
                 }
-                
-                else if (connection === 'connecting') {
-                    console.log('Connecting for ID:', id);
-                }
-            });
-            
-            // Request pairing code if not registered
-            if (!sock.authState.creds.registered) {
-                console.log('Requesting pairing code for:', num);
-                
-                try {
-                    const pairingCode = await sock.requestPairingCode(num);
-                    
-                    // Format code for display (XXXX-XXXX-XXXX)
-                    let formattedCode = pairingCode;
-                    if (pairingCode.length >= 8) {
-                        formattedCode = pairingCode.match(/.{1,4}/g)?.join('-') || pairingCode;
-                    }
-                    
-                    // Send code to browser
-                    if (!res.headersSent) {
-                        res.send({ 
-                            code: pairingCode,
-                            formatted: formattedCode,
-                            number: num,
-                            message: "Enter this code in WhatsApp Web to connect"
-                        });
-                        
-                        console.log('Pairing code sent for:', num, 'Code:', pairingCode);
-                    }
-                    
-                } catch (err) {
-                    console.error('Error requesting pairing code:', err);
-                    
-                    if (!res.headersSent) {
-                        res.send({ 
-                            error: "Failed to get pairing code",
-                            details: err.message 
-                        });
-                    }
-                    
-                    // Clean up
-                    await sock.ws.close();
-                    removeFile('./temp/'+id);
-                }
-            }
+            };
+
+            sock.ev.on('connection.update', connectionHandler);
             
             // Save credentials on update
             sock.ev.on('creds.update', saveCreds);
             
-        } catch (err) {
-            console.error('Service error:', err);
-            
-            if (!res.headersSent) {
-                res.send({ 
-                    error: "Service is currently unavailable",
-                    details: err.message 
-                });
+            // Overall timeout (60 seconds like your example)
+            setTimeout(() => {
+                if (!resolved) {
+                    resolved = true;
+                    sock.ev.off('connection.update', connectionHandler);
+                    reject(new Error('Timeout (60s)'));
+                }
+            }, 60000);
+        });
+
+        // Store the session for monitoring
+        activePairings.set(sessionId, {
+            sock,
+            state,
+            saveCreds,
+            phoneNumber: num,
+            pairingCode,
+            createdAt: Date.now(),
+            status: 'waiting'
+        });
+
+        console.log(`[${sessionId}] ✅ Code for ${num}: ${pairingCode}`);
+
+        // Format code for display (XXXX-XXXX-XXXX)
+        const formattedCode = pairingCode.match(/.{1,4}/g)?.join('-') || pairingCode;
+
+        // Send code to browser immediately
+        if (!res.headersSent) {
+            res.json({
+                success: true,
+                sessionId,
+                code: pairingCode,
+                formatted: formattedCode,
+                number: num,
+                message: `Enter ${pairingCode} in WhatsApp Linked Devices`
+            });
+        }
+
+        // Start monitoring for successful connection
+        startPairingMonitor(sessionId);
+
+    } catch (error) {
+        console.error(`[${sessionId}] ❌ Error:`, error.message);
+        
+        // Clean up
+        removeFile('./temp/'+sessionId);
+        activePairings.delete(sessionId);
+        
+        if (!res.headersSent) {
+            // Better error messages (like your example)
+            let errorMessage = error.message;
+            if (error.message.includes('Timeout')) {
+                errorMessage = 'Connection timeout. Please try again.';
+            } else if (error.message.includes('closed')) {
+                errorMessage = 'WhatsApp connection closed. Please try again.';
+            } else if (error.message.includes('rate')) {
+                errorMessage = 'Rate limited. Please wait a moment.';
             }
             
-            removeFile('./temp/'+id);
+            res.json({ 
+                error: errorMessage
+            });
         }
     }
-    
-    return await MEGAN_MD_PAIR_CODE()
+});
+
+// Monitor for successful pairing
+function startPairingMonitor(sessionId) {
+    const checkInterval = setInterval(async () => {
+        const pairing = activePairings.get(sessionId);
+        if (!pairing) {
+            clearInterval(checkInterval);
+            return;
+        }
+
+        // Check if registered (successfully paired)
+        if (pairing.state.creds.registered && pairing.state.creds.me?.id) {
+            clearInterval(checkInterval);
+            console.log(`[${sessionId}] 📱 Paired: ${pairing.phoneNumber}`);
+            
+            try {
+                // Send session to user
+                await sendSessionToUser(pairing);
+                pairing.status = 'completed';
+            } catch (error) {
+                console.error(`[${sessionId}] Send error:`, error.message);
+            }
+            
+            // Clean up after 10 seconds
+            setTimeout(() => {
+                activePairings.delete(sessionId);
+                removeFile('./temp/'+sessionId);
+            }, 10000);
+        }
+        
+        // Timeout check
+        if (Date.now() - pairing.createdAt > SESSION_TIMEOUT) {
+            clearInterval(checkInterval);
+            console.log(`[${sessionId}] ⌛ Timeout`);
+            activePairings.delete(sessionId);
+            removeFile('./temp/'+sessionId);
+        }
+    }, 2000); // Check every 2 seconds like your example
+}
+
+// Send session to user (like your example)
+async function sendSessionToUser(pairing) {
+    try {
+        // Read credentials
+        let data = fs.readFileSync(path.join(__dirname, 'temp', pairing.sessionId, 'creds.json'));
+        let b64data = Buffer.from(data).toString('base64');
+        
+        const userJid = pairing.state.creds.me.id;
+        
+        // Send session token
+        await pairing.sock.sendMessage(userJid, {
+            text: `🎉 *MEGAN-MD SESSION TOKEN*\n\n\`\`\`MEGAN-MD=${b64data}\`\`\`\n\nSave this for your MEGAN-MD bot.\n🔧 Engineered by WANGA`
+        });
+        
+        // Send success message
+        await pairing.sock.sendMessage(userJid, {
+            text: `╔══════════════════════════════╗
+║     ✅ SESSION CONNECTED     ║
+╚══════════════════════════════╝
+
+📱 *Number:* ${pairing.phoneNumber}
+🔧 *Engineered by WANGA*
+📢 *Channel:* @MEGAN_MD
+
+✅ Your bot is ready to use!`
+        });
+        
+        console.log(`[${pairing.sessionId}] 📨 Session sent`);
+        
+    } catch (error) {
+        console.error(`[${pairing.sessionId}] Send error:`, error.message);
+    }
+}
+
+// Optional: Status endpoint (like your example)
+router.get('/status/:sessionId', async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const pairing = activePairings.get(sessionId);
+        
+        if (!pairing) {
+            return res.json({ 
+                success: false, 
+                error: 'Session expired or not found' 
+            });
+        }
+
+        const timeLeft = Math.max(0, SESSION_TIMEOUT - (Date.now() - pairing.createdAt));
+        
+        res.json({
+            success: true,
+            status: pairing.status,
+            isRegistered: pairing.state.creds.registered,
+            pairingCode: pairing.pairingCode,
+            phoneNumber: pairing.phoneNumber,
+            timeLeft: Math.floor(timeLeft / 1000),
+            message: pairing.status === 'completed' ? 
+                '✅ Check your WhatsApp for session!' : 
+                '⌛ Enter code on your phone'
+        });
+        
+    } catch (error) {
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// Optional: Cancel endpoint (like your example)
+router.delete('/cancel/:sessionId', async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const pairing = activePairings.get(sessionId);
+        
+        if (pairing && pairing.sock) {
+            try { pairing.sock.ws.close(); } catch (e) {}
+        }
+        
+        activePairings.delete(sessionId);
+        removeFile('./temp/'+sessionId);
+        
+        res.json({ success: true, message: 'Cancelled' });
+        
+    } catch (error) {
+        res.json({ success: false, error: error.message });
+    }
 });
 
 module.exports = router;
