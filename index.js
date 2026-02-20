@@ -1,61 +1,32 @@
 const express = require('express');
-const path = require('path');
-const bodyParser = require('body-parser');
-const fs = require('fs-extra');
-
-// Import routes
-const pairRoute = require('./pair');
-const scanRoute = require('./scan');
-
 const app = express();
+__path = process.cwd()
+const bodyParser = require("body-parser");
 const PORT = process.env.PORT || 8000;
-
-// Create temp directory
-fs.ensureDirSync(path.join(__dirname, 'temp'));
-
-// Middleware
+let server = require('./qr'),
+    code = require('./pair');
+require('events').EventEmitter.defaultMaxListeners = 500;
+app.use('/qr', server);
+app.use('/code', code);
+app.use('/pair',async (req, res, next) => {
+res.sendFile(__path + '/pair.html')
+})
+app.use('/',async (req, res, next) => {
+res.sendFile(__path + '/index.html')
+})
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname)));
-
-// Routes
-app.use('/pair', pairRoute);
-app.use('/code', pairRoute); // Alias for backward compatibility
-app.use('/scan', scanRoute);
-app.use('/qr', scanRoute); // Alias for backward compatibility
-
-// Serve HTML pages
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-app.get('/pair-page', (req, res) => {
-    res.sendFile(path.join(__dirname, 'pair.html'));
-});
-
-app.get('/scan-page', (req, res) => {
-    res.sendFile(path.join(__dirname, 'scan.html'));
-});
-
-// 404 handler
-app.use((req, res) => {
-    res.status(404).sendFile(path.join(__dirname, 'index.html'));
-});
-
-// Start server
 app.listen(PORT, () => {
     console.log(`
-╔══════════════════════════════════════╗
-║     🤖 MEGAN-MD PAIRING SYSTEM       ║
-╠══════════════════════════════════════╣
-║  ✅ Server is running                ║
-║  📍 Port: ${PORT}                           ║
-║  🌐 URL: http://localhost:${PORT}           ║
-║                                        ║
-║  📱 Pairing: http://localhost:${PORT}/pair-page ║
-║  📸 QR Scan: http://localhost:${PORT}/scan-page ║
-╚══════════════════════════════════════╝
-    `);
-});
+╔══════════════════════════════╗
+║     MEGAN-MD SESSIONS        ║
+║   Multi-Device Engineered    ║
+╠══════════════════════════════╣
+║  🚀 Server is Live!          ║
+║  📍 Port: ` + PORT + `                ║
+║  🔧 Engineered by WANGA      ║
+╚══════════════════════════════╝
+`)
+})
 
-module.exports = app;
+module.exports = app
