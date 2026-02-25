@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEGAN-MD Session</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 {
+            color: #075e54;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #667781;
+            margin-bottom: 30px;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #075e54;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background: #054c44;
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f0f2f5;
+            border-radius: 5px;
+            display: none;
+        }
+        .code {
+            font-size: 28px;
+            font-weight: bold;
+            color: #075e54;
+            letter-spacing: 3px;
+            margin: 15px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            border: 2px dashed #075e54;
+        }
+        .error {
+            color: #d32f2f;
+            background: #ffebee;
+            padding: 12px;
+            border-radius: 5px;
+            margin-top: 15px;
+            display: none;
+        }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #075e54;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .info {
+            color: #075e54;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .steps {
+            text-align: left;
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        .steps ol {
+            margin: 0;
+            padding-left: 20px;
+            color: #333;
+        }
+        .steps li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MEGAN-MD Session</h1>
+        <p>Enter your phone number with country code</p>
+        
+        <input type="text" id="number" placeholder="e.g., 254758476795" value="254">
+        <button onclick="getCode()" id="generateBtn">Generate Code</button>
+        
+        <div id="result">
+            <div style="margin-bottom: 10px;">✅ Your Pairing Code:</div>
+            <div class="code" id="code"></div>
+            
+            <div class="steps">
+                <strong>📱 How to connect:</strong>
+                <ol>
+                    <li>Open WhatsApp on your phone</li>
+                    <li>Go to <strong>Settings → Linked Devices</strong></li>
+                    <li>Tap <strong>"Link a Device"</strong></li>
+                    <li>Enter this code: <strong id="codeDisplay"></strong></li>
+                </ol>
+            </div>
+            
+            <div class="info" id="status"></div>
+        </div>
+        
+        <div id="error" class="error"></div>
+    </div>
+
+    <script>
+        let sessionId = null;
+        let statusInterval = null;
+        
+        async function getCode() {
+            let number = document.getElementById('number').value.replace(/[^0-9]/g, '');
+            let btn = document.getElementById('generateBtn');
+            let result = document.getElementById('result');
+            let errorDiv = document.getElementById('error');
+            
+            // Hide previous results
+            result.style.display = 'none';
+            errorDiv.style.display = 'none';
+            
+            // Validate number
+            if (number.length < 10) {
+                showError('Please enter a valid number with country code (e.g., 254 for Kenya)');
+                return;
+            }
+            
+            // Loading state
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loader"></span> Generating...';
+            
+            try {
+                console.log('Requesting code for:', number);
+                let response = await fetch('/code?number=' + number);
+                let data = await response.json();
+                console.log('Response:', data);
+                
+                if (data.status === 'processing') {
+                    // Got session ID, start polling
+                    sessionId = data.sessionId;
+                    document.getElementById('status').textContent = 'Processing request...';
+                    result.style.display = 'block';
+                    startPolling(sessionId);
+                } else if (data.code) {
+                    // Direct code response
+                    displayCode(data.code);
+                } else if (data.error) {
+                    showError('Error: ' + data.error);
+                    btn.disabled = false;
+                    btn.innerHTML = 'Generate Code';
+                }
+            } catch (err) {
+                console.error('Network error:', err);
+                showError('Network error. Please try again.');
+                btn.disabled = false;
+                btn.innerHTML = 'Generate Code';
+            }
+        }
+        
+        function startPolling(sessionId) {
+            document.getElementById('status').textContent = 'Generating code...';
+            
+            if (statusInterval) clearInterval(statusInterval);
+            
+            statusInterval = setInterval(async () => {
+                try {
+                    let response = await fetch(`/code/status/${sessionId}`);
+                    let data = await response.json();
+                    
+                    if (data.status === 'code_ready') {
+                        clearInterval(statusInterval);
+                        displayCode(data.code);
+                    } else if (data.status === 'error') {
+                        clearInterval(statusInterval);
+                        showError('Error: ' + data.error);
+                        resetButton();
+                    } else if (data.status === 'expired') {
+                        clearInterval(statusInterval);
+                        showError('Session expired. Please try again.');
+                        resetButton();
+                    }
+                } catch (err) {
+                    console.error('Polling error:', err);
+                }
+            }, 2000);
+            
+            // Timeout after 30 seconds
+            setTimeout(() => {
+                if (statusInterval) {
+                    clearInterval(statusInterval);
+                    showError('Request timed out. Please try again.');
+                    resetButton();
+                }
+            }, 30000);
+        }
+        
+        function displayCode(code) {
+            let codeDiv = document.getElementById('code');
+            let codeDisplay = document.getElementById('codeDisplay');
+            let result = document.getElementById('result');
+            let btn = document.getElementById('generateBtn');
+            
+            codeDiv.textContent = code;
+            codeDisplay.textContent = code;
+            document.getElementById('status').textContent = '✅ Code ready! Enter it in WhatsApp.';
+            
+            result.style.display = 'block';
+            
+            // Reset button
+            btn.disabled = false;
+            btn.innerHTML = 'Generate Code';
+            
+            // Clear polling
+            if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+            }
+        }
+        
+        function showError(message) {
+            let errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        function resetButton() {
+            let btn = document.getElementById('generateBtn');
+            btn.disabled = false;
+            btn.innerHTML = 'Generate Code';
+            
+            if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+            }
+        }
+    </script>
+</body>
+</html>
