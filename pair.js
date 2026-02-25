@@ -85,7 +85,7 @@ async function processPairing(num, id, sessionDir) {
             printQRInTerminal: false,
             logger: pino({ level: 'silent' }),
             // CHROME BROWSER FORMAT - Try these different formats:
-            browser: ["Chrome", "Linux", "120.0.6099.109"], // Full Chrome version
+            browser: ["Chrome", "Ubuntu", "20"], // Full Chrome version
             // browser: ["Chrome (Linux)", "", ""], // Alternative format
             // browser: ["Google Chrome", "Windows", "120.0.6099.109"], // Another format
             syncFullHistory: false,
