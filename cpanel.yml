@@ -1,0 +1,10 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/giftech-bots/home/megan-md-session/public_html/
+    - /bin/cp -R images $DEPLOYPATH
+    - /bin/cp -R public $DEPLOYPATH
+    - /bin/cp index.js $DEPLOYPATH
+    - /bin/cp gift.js $DEPLOYPATH
+    - /bin/cp package.json $DEPLOYPATH
+    - /bin/cp app.json $DEPLOYPATH
