@@ -1,0 +1,16 @@
+{
+    "name": "MEGAN MD Session Generator",
+    "description": "MEGAN MD WhatsApp Session Generator by Tracker Wanga",
+    "logo": "https://files.catbox.moe/52699c.jpg",
+    "repository": "https://github.com/Wangake/megan-md",
+    "keywords": ["MEGAN-MD", "WhatsApp", "Bot", "Session"],
+    "success_url": "/", 
+    "buildpacks": [{ "url": "https://github.com/heroku/heroku-buildpack-nodejs#latest" } ],
+    "env": {      
+      "PORT": {
+        "description": "Port for web app",
+        "value": "50900",
+        "required": false 
+      }
+    }   
+}
